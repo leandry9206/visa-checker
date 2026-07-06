@@ -79,21 +79,26 @@ async function main() {
       process.exit(0);
     }
 
-    // TODO: confirmar en la página — selector real del dato de estado en la página de resultado
-    const nuevoValor = (await page.locator('#estadoTramite').textContent())?.trim() ?? '';
+    const nuevoValor = (await page.locator('#ContentPlaceHolderConsulta_TituloEstado').textContent())?.trim() ?? '';
 
     const valorAnterior = state.lastValue ?? null;
     const cambio = nuevoValor !== valorAnterior;
+    const ahora = new Date().toISOString();
 
-    if (cambio || valorAnterior === null || NOTIFY_ALWAYS) {
-      const ahora = new Date().toISOString();
+    if (cambio || valorAnterior === null) {
+      state.lastChangedAt = ahora;
       await sendMessage(
-        `Trámite actualizado (${ahora})\nNuevo: ${nuevoValor}\nAnterior: ${valorAnterior ?? '(sin dato previo)'}`
+        `Estado del trámite: ${nuevoValor}\nCambió el ${ahora}` +
+          (valorAnterior ? `\nEstado anterior: ${valorAnterior}` : '')
+      );
+    } else if (NOTIFY_ALWAYS) {
+      await sendMessage(
+        `Estado del trámite: ${nuevoValor}\nSin cambios desde ${state.lastChangedAt ?? '(primera consulta)'}`
       );
     }
 
     state.lastValue = nuevoValor;
-    state.lastCheckedAt = new Date().toISOString();
+    state.lastCheckedAt = ahora;
     writeState(state);
   } catch (err) {
     writeState(state);

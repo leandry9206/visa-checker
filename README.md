@@ -11,10 +11,13 @@ respuesta escrita.
    Actions abre el sitio con Playwright y rellena el formulario "Consultar Resguardo".
 2. Cuando aparece el captcha, el bot te manda la imagen por Telegram.
 3. Vos respondés en el chat con los dígitos. El workflow los usa para continuar.
-4. Si el dato del trámite cambió respecto a la última vez, te llega un mensaje. Si no
-   cambió, no te molesta.
-5. El estado (último valor + offset de Telegram) se guarda en `state.json`, que el
-   propio workflow commitea de vuelta al repo.
+4. El dato que se lee es el **estado de la solicitud** (ej. "TRÁMITE SOLICITADO"). Si
+   cambió respecto a la última vez, te llega un mensaje con el nuevo estado y la fecha
+   del cambio. Si no cambió, no te molesta (salvo `NOTIFY_ALWAYS=true`, que además
+   muestra desde cuándo no cambia).
+5. El estado se guarda en `state.json` (último valor, fecha del último cambio, fecha
+   de la última consulta y offset de Telegram), que el propio workflow commitea de
+   vuelta al repo.
 
 No hay servidor propio: todo corre en los minutos de GitHub Actions.
 
@@ -64,25 +67,21 @@ Los Secrets nunca se exponen en los logs, aunque el repo sea público.
   hora (24/día) puede agotarlo. Si preferís mantenerlo privado, bajá la frecuencia del
   cron en `.github/workflows/monitor.yml` (por ejemplo cada 2 o 3 horas).
 
-## 5. Confirmar el selector de la página de resultado
+## 5. Selectores (ya confirmados)
 
-Los selectores del formulario de entrada ya están confirmados con el HTML real del
-sitio (`#infServicio`, `#txIdentificador`, `#txtFechaNacimiento`, `#imagenCaptcha`,
-`#imgcaptcha`, `#imgVerSuTramite`), igual que los mensajes de error del propio sitio
-(`#CompararCaptcha` para captcha incorrecto, `#lblErrorGeneral` para otros errores) —
-`run.js` ya reintenta automáticamente con un captcha nuevo si el primero no coincide.
+Todos los selectores están confirmados con el HTML real del sitio, no quedan TODOs:
 
-Lo único que sigue marcado `// TODO: confirmar en la página` en `run.js` es el
-selector `#estadoTramite`, porque no se pudo capturar el HTML de la página de
-**resultado** (la que aparece después de un captcha correcto). Para completarlo:
+- Formulario de entrada: `#infServicio`, `#txIdentificador`, `#txtFechaNacimiento`,
+  `#imagenCaptcha`, `#imgcaptcha`, `#imgVerSuTramite`.
+- Errores del propio sitio: `#CompararCaptcha` (captcha incorrecto — `run.js`
+  reintenta automáticamente con una imagen nueva) y `#lblErrorGeneral` (otros
+  errores del formulario).
+- Página de resultado (`ConsultarTramite/DatosConsulta.aspx`): el estado de la
+  solicitud está en `#ContentPlaceHolderConsulta_TituloEstado`.
 
-1. Cargá los Secrets (paso 3) con datos reales.
-2. Lanzá el workflow manualmente: pestaña **Actions → Monitor trámite consular → Run
-   workflow**, y respondé el captcha por Telegram cuando llegue.
-3. Si `#estadoTramite` no existe en la página de resultado, el step "Run monitor"
-   va a fallar en esa línea. Abrí la página de resultado en tu navegador (podés
-   completar el mismo formulario manualmente), inspeccioná el elemento que muestra
-   el estado del trámite y reemplazá el selector en `run.js`.
+Igual, si el sitio cambia su HTML en el futuro, `workflow_dispatch` + los logs del
+step "Run monitor" son la forma de detectarlo (Playwright indica el selector que
+falló).
 
 ## Estructura del proyecto
 
@@ -90,7 +89,7 @@ selector `#estadoTramite`, porque no se pudo capturar el HTML de la página de
 run.js                       # flujo completo de una ejecución
 telegram.js                  # sendMessage, sendPhoto, waitForReply (long-poll)
 state.js                     # leer/escribir state.json
-state.json                   # último valor + offset de Telegram (se versiona)
+state.json                   # último estado, fecha de cambio/consulta y offset de Telegram (se versiona)
 package.json
 .github/workflows/monitor.yml
 ```
