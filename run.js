@@ -46,9 +46,16 @@ async function fillAndSubmit(page, state) {
       continue;
     }
 
-    const errorGeneral = (await page.locator('#lblErrorGeneral').textContent())?.trim();
-    if (errorGeneral) {
-      return { ok: false, reason: 'form-error', message: errorGeneral };
+    // Un captcha correcto navega a la página de resultado, donde ya no existe
+    // #lblErrorGeneral (solo vive en el formulario de entrada). count() no espera,
+    // a diferencia de textContent(), que colgaría hasta el timeout si el elemento
+    // ya no está en el DOM.
+    const errorLocator = page.locator('#lblErrorGeneral');
+    if ((await errorLocator.count()) > 0) {
+      const errorGeneral = (await errorLocator.textContent())?.trim();
+      if (errorGeneral) {
+        return { ok: false, reason: 'form-error', message: errorGeneral };
+      }
     }
 
     return { ok: true };
