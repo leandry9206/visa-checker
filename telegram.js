@@ -2,7 +2,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-const DIGITS_RE = /^\d{4,8}$/;
+const DIGITS_RE = /^\d{4,6}$/;
 const MAX_INVALID_ATTEMPTS = 2;
 const POLL_TIMEOUT_SEC = 20;
 
@@ -64,7 +64,7 @@ export async function waitForReply({ offset, timeoutMin }) {
       if (invalidAttempts > MAX_INVALID_ATTEMPTS) {
         return { digits: null, newOffset: currentOffset };
       }
-      await sendMessage('Formato inválido. Respondé solo con los dígitos del captcha (4 a 8 números).');
+      await sendMessage('Formato inválido. Respondé solo con los dígitos del captcha (4 a 6 números).');
     }
   }
 

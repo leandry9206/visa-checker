@@ -47,10 +47,12 @@ Cargá estos seis secrets:
 |---|---|
 | `TELEGRAM_BOT_TOKEN` | Token del bot (paso 1) |
 | `TELEGRAM_CHAT_ID` | Tu chat id (paso 2) |
-| `TIPO_TRAMITE` | Texto exacto de la opción de "Tipo de trámite" (visado) |
+| `TIPO_TRAMITE` | Valor exacto del `<option>` de "Tipo de trámite": `VISADO` o `PASAPORTE` |
 | `IDENTIFICADOR` | Identificador del trámite |
-| `IDENTIFICADOR_ACCEDA` | Identificador Acceda (dejalo vacío si no aplica) |
-| `ANIO_NACIMIENTO` | Año de nacimiento |
+| `ANIO_NACIMIENTO` | Año de nacimiento (4 dígitos) |
+
+El campo "Identificador Acceda" del formulario **no se usa** — el flujo lo deja
+siempre vacío, tal como se pidió.
 
 Los Secrets nunca se exponen en los logs, aunque el repo sea público.
 
@@ -62,31 +64,25 @@ Los Secrets nunca se exponen en los logs, aunque el repo sea público.
   hora (24/día) puede agotarlo. Si preferís mantenerlo privado, bajá la frecuencia del
   cron en `.github/workflows/monitor.yml` (por ejemplo cada 2 o 3 horas).
 
-## 5. Confirmar los selectores del formulario
+## 5. Confirmar el selector de la página de resultado
 
-El HTML real de `https://sutramiteconsular.maec.es/` no pudo inspeccionarse de
-antemano (el sitio bloquea el acceso automatizado fuera del propio flujo de
-Playwright). Por eso `run.js` tiene selectores marcados con
-`// TODO: confirmar en la página` para:
+Los selectores del formulario de entrada ya están confirmados con el HTML real del
+sitio (`#infServicio`, `#txIdentificador`, `#txtFechaNacimiento`, `#imagenCaptcha`,
+`#imgcaptcha`, `#imgVerSuTramite`), igual que los mensajes de error del propio sitio
+(`#CompararCaptcha` para captcha incorrecto, `#lblErrorGeneral` para otros errores) —
+`run.js` ya reintenta automáticamente con un captcha nuevo si el primero no coincide.
 
-- El `<select>` de "Tipo de trámite".
-- El input "Identificador".
-- El input "Identificador Acceda".
-- El input "Año de nacimiento".
-- El elemento imagen del captcha.
-- El input donde se escriben los dígitos del captcha.
-- El botón "consultar trámite".
-- El elemento de la página de resultado con el estado del trámite.
-
-Pasos para completarlos:
+Lo único que sigue marcado `// TODO: confirmar en la página` en `run.js` es el
+selector `#estadoTramite`, porque no se pudo capturar el HTML de la página de
+**resultado** (la que aparece después de un captcha correcto). Para completarlo:
 
 1. Cargá los Secrets (paso 3) con datos reales.
 2. Lanzá el workflow manualmente: pestaña **Actions → Monitor trámite consular → Run
-   workflow**.
-3. Mirá los logs del step "Run monitor". Si algún selector falla, Playwright te dice
-   cuál. Abrí la página en tu navegador, inspeccioná el elemento correspondiente
-   (clic derecho → Inspeccionar) y reemplazá el selector TODO en `run.js` por el real.
-4. Repetí hasta que el flujo llegue sano hasta el final (captcha incluido).
+   workflow**, y respondé el captcha por Telegram cuando llegue.
+3. Si `#estadoTramite` no existe en la página de resultado, el step "Run monitor"
+   va a fallar en esa línea. Abrí la página de resultado en tu navegador (podés
+   completar el mismo formulario manualmente), inspeccioná el elemento que muestra
+   el estado del trámite y reemplazá el selector en `run.js`.
 
 ## Estructura del proyecto
 
