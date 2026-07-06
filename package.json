@@ -1,0 +1,13 @@
+{
+  "name": "visa-checker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monitor de trámite consular con captcha resuelto por humano vía Telegram",
+  "scripts": {
+    "start": "node run.js"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}
