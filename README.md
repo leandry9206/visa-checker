@@ -83,6 +83,68 @@ Igual, si el sitio cambia su HTML en el futuro, `workflow_dispatch` + los logs d
 step "Run monitor" son la forma de detectarlo (Playwright indica el selector que
 falló).
 
+## 6. Comando `/revisar` por Telegram (opcional)
+
+Además de la revisión automática cada hora, podés disparar una consulta al instante
+mandándole `/revisar` a un bot por Telegram. Esto necesita una pieza extra fuera de
+GitHub Actions, por una limitación real de Telegram:
+
+> Telegram no permite que un mismo bot use `getUpdates` (polling, lo que usa
+> `run.js` para esperar los dígitos del captcha) **y** un webhook al mismo tiempo.
+> Por eso `/revisar` funciona con un **segundo bot**, dedicado solo a ese comando.
+> El bot original (paso 1) sigue igual, sin tocarlo, para el captcha y los avisos.
+
+La pieza extra es una función serverless en **Vercel** (`telegram-webhook/`) que
+Telegram llama al instante apenas mandás `/revisar`, y que dispara el
+`workflow_dispatch` de `monitor.yml` vía la API de GitHub — la misma llamada que
+hace el botón "Run workflow" de la pestaña Actions.
+
+### 6.1. Crear el segundo bot
+
+Repetí el paso 1 con @BotFather para crear un bot nuevo (ej. `VisaCheckerControlBot`)
+y conseguí su `TELEGRAM_CHAT_ID` de la misma forma que el paso 2 (mandale un mensaje
+y mirá `getUpdates` con el token de este bot nuevo). Va a ser un chat distinto al del
+bot original.
+
+### 6.2. Crear un token de GitHub para disparar el workflow
+
+**Settings de tu cuenta de GitHub → Developer settings → Fine-grained tokens → Generate
+new token.** Limitalo solo al repo `visa-checker`, con permiso **Actions: Read and
+write**. Guardá el token generado.
+
+### 6.3. Desplegar la función en Vercel
+
+1. En [vercel.com](https://vercel.com), **Add New Project** → importá el repo
+   `leandry9206/visa-checker`.
+2. En **Root Directory**, elegí `telegram-webhook` (así Vercel ignora el resto del
+   repo, incluida la dependencia de Playwright).
+3. En **Environment Variables** del proyecto de Vercel, cargá:
+
+   | Variable | Valor |
+   |---|---|
+   | `REVISAR_BOT_TOKEN` | Token del bot nuevo (paso 6.1) |
+   | `TELEGRAM_CHAT_ID` | Chat id del bot nuevo (paso 6.1) |
+   | `TELEGRAM_WEBHOOK_SECRET` | Cualquier cadena random que inventes (ej. generada con `openssl rand -hex 20`) |
+   | `GITHUB_TOKEN` | El fine-grained token del paso 6.2 |
+   | `GITHUB_OWNER` | `leandry9206` |
+   | `GITHUB_REPO` | `visa-checker` |
+   | `GITHUB_REF` | `claude/project-creation-faz9ja` (o `main` una vez que fusiones esta rama) |
+
+4. Deploy. Anotá la URL que te da Vercel (ej. `https://visa-checker-xxxx.vercel.app`).
+
+### 6.4. Registrar el webhook en Telegram
+
+Con el token del bot nuevo y la URL de Vercel, abrí una vez en el navegador (o `curl`),
+reemplazando `<TOKEN>`, `<URL>` y `<SECRET>` por los tuyos:
+
+```
+https://api.telegram.org/bot<TOKEN>/setWebhook?url=<URL>/api/revisar&secret_token=<SECRET>
+```
+
+Debería responder `{"ok":true,"result":true,...}`. A partir de ahí, mandarle
+`/revisar` al bot nuevo dispara el workflow en segundos; el captcha y el estado
+del trámite te siguen llegando por el bot original, sin cambios.
+
 ## Estructura del proyecto
 
 ```
@@ -92,6 +154,7 @@ state.js                     # leer/escribir state.json
 state.json                   # último estado, fecha de cambio/consulta y offset de Telegram (se versiona)
 package.json
 .github/workflows/monitor.yml
+telegram-webhook/            # función Vercel para el comando /revisar (opcional, ver sección 6)
 ```
 
 ## Restricción de diseño
